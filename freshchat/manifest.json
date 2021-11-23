@@ -1,0 +1,18 @@
+{
+  "platform-version": "2.2",
+  "product": {
+    "freshchat": {
+      "location": {
+        "conversation_user_info": {
+          "url": "index.html",
+          "icon": "styles/images/icon.svg"
+        }
+      }
+    }
+  },
+  "whitelisted-domains": [],
+  "engines": {
+    "node": "12.22.7",
+    "fdk": "7.1.1"
+  }
+}
