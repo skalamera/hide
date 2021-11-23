@@ -1,29 +1,19 @@
-document.onreadystatechange = function() {
-  if (document.readyState === 'interactive') renderApp();
+var client;
 
-  function renderApp() {
-    var onInit = app.initialized();
+(async function init() {
+  client = await app.initialized();
+  client.events.on('app.activated', hideUserProperty);
+})();
 
-    onInit.then(getClient).catch(handleErr);
+async function hideUserProperty() {
+  var hideBtn = document.querySelector('.hide-user-property');
+  hideBtn.addEventListener('fwClick', hideIt);
 
-    function getClient(_client) {
-      window.client = _client;
-      client.events.on('app.activated', renderCustomerName);
+  async function hideIt() {
+    try {
+      await client.interface.trigger('hide', { id: 'userCustomProperties' });
+    } catch (error) {
+      console.error('problem hiding custom prop', error);
     }
   }
-};
-
-function renderCustomerName() {
-  var textElement = document.getElementById('apptext');
-  client.data
-    .get('user')
-    .then(function(payload) {
-      textElement.innerHTML = `Data Method returned with customer name: <mark>${payload
-        .user.first_name}</mark>`;
-    })
-    .catch(handleErr);
-}
-
-function handleErr(err = 'None') {
-  console.error(`Error occured. Details:`, err);
 }
