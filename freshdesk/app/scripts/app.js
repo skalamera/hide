@@ -5,7 +5,7 @@ window.frsh_init().then(function(client) {
 function showModal() {
   client.interface.trigger('showModal', {
     title: 'Sample App Form',
-    template: 'modal.html' })
+    template: './views/modal.html' })
   .then( 
     function(data) {
       console.log('Parent:InterfaceAPI:showModal', data);
@@ -19,7 +19,7 @@ function showModal() {
 function showDialog() {
   client.interface.trigger('showDialog', {
     title: 'Sample Dialog',
-    template: 'modal.html' })
+    template: './views/modal.html' })
   .then(
     function(data) {
       console.log('Parent:InterfaceAPI:showDialog', data);
@@ -78,12 +78,13 @@ function setValue(element, value) {
   client.interface.trigger("setValue", { id: element, value: value });
 }
 
-function openNote(element) {
-  client.interface.trigger("click", {id: "note", text: "Text to be inserted", isPublic: true});
+function openNote() {
+  client.interface.trigger("click", {id: "openNote", text: "Text to be inserted", isPublic: true});
 }
 
 function insertContent(element) {
   client.interface.trigger("setValue", {id: "editor", text: "insert content"} );
+  console.log(element);
   // Replace content
   // client.interface.trigger("setValue", {id: "editor", text: "replace content", replace: true} );
 
