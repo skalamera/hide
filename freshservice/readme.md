@@ -1,4 +1,4 @@
-# [Interface API](https://developer.freshservice.com/docs/interface-methods)
+# [Interface API](https://freshworks.dev/docs/app-sdk/v2.3/freshservice/front-end-apps/interface-methods/)
 
 Interface APIs can be used to trigger user interface actions in the page.
 

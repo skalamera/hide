@@ -9,9 +9,12 @@ async function renderApp() {
   var hideBtn = document.querySelector('.btn-userCustomProperty');
   hideBtn.addEventListener('fwClick', async function hideIt() {
     try {
-      await client.interface.trigger('hide', { id: 'userCustomProperties' });
+      await client.interface.trigger("showNotify", {
+        type: "info",
+        message: "Showing the notification via interface method!"
+      });
     } catch (error) {
-      console.error('problem hiding custom prop', error);
+      console.error('Failed to show notification', error);
     }
   });
 }

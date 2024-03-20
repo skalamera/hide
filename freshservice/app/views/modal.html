@@ -1,26 +1,28 @@
-  <html>
-  <script src="https://static.freshcloud.io/fdk/2.0/assets/fresh_client.js"></script>
-   <script>
-    window.frsh_init().then(function(client){
-      // sample code for DataApi
-      client.data.get('ticket')
-      .then(
-        function(data) {
+<html>
+  <head>
+    <script src={{{appclient}}}></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@freshworks/crayons@v4/dist/crayons/crayons.esm.js"></script>
+    <script nomodule src="https://cdn.jsdelivr.net/npm/@freshworks/crayons@v4/dist/crayons/crayons.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@freshworks/crayons@v4/css/crayons-min.css" />
+  </head>
+  <body>
+    <script>
+      const init = async () => {
+        try {
+          const client = await window.frsh_init();
+          const data = await client.data.get('ticket');
           console.log('Child:DataApi', data);
-        },
-        function(error) {
+        } catch (error) {
           console.log('Child:DataApi', error);
         }
-      );
-    });
-  </script>
-  <link rel='stylesheet' type='text/css' href='../styles/modal.css' />
-  <body>
-    <div class='form'>
+      };
+      init();
+    </script>
+    <div class="form">
       <form>
-        <input type='text' name='field1' id='name' placeholder='Your Name' />
-        <input type='email' name='field2' id='email' placeholder='Email Address' />
-        <input type='submit' value='Send' />
+        <fw-input label="Your Name" type="text" name="field1" id="name" placeholder="Your Name"></fw-input>
+        <fw-input label="Email Address" type="email" name="field2" id="email" placeholder="Email Address"></fw-input>
+        <fw-button type="submit">Send</fw-button>
       </form>
     </div>
   </body>

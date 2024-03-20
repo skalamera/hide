@@ -1,4 +1,4 @@
-# [Interface API](https://developers.freshdesk.com/v2/docs/interface-api/)
+# [Interface API](https://freshworks.dev/docs/app-sdk/v2.3/freshdesk/front-end-apps/interface-methods/)
 
 Interface APIs can be used to trigger user interface actions in the page.
 
