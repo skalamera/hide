@@ -3,7 +3,7 @@
 This sample app demonstrates [interface method](https://developers.freshworks.com/docs/app-sdk/v3.0/support_ticket/front-end-apps/interface-methods/) on Platform version 3.0 in different modules using the interface methods such as `client.interface.trigger('showModal', {})`, `client.interface.trigger('showConfirm', {})`, etc
 
 | Module | Works in Product |
-| ----- | ------- |
+| ----- | ------ |
 | `support_ticket` | Freshdesk |
 | `service_ticket` | Freshservice |
 | `deal` | Freshsales Classic and Freshsales Suite |
