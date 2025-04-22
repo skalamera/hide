@@ -8,7 +8,7 @@ This sample app demonstrates [interface method](https://developers.freshworks.co
 | `service_ticket` | Freshservice |
 | `deal` | Freshsales Classic and Freshsales Suite |
 
-### Files and Folders
+## Files and Folders
     .
     ├── README.md                 A file for your future self and developer friends to learn about app
     ├── app                       A folder to place all assets required for frontend components
