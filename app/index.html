@@ -6,44 +6,90 @@
 <script src="{{{appclient}}}"></script>
 <script src="scripts/app.js"></script>
 <style>
-  #loading-message {
-    padding: 20px;
+  :root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --text-color: #333;
+    --light-bg: #f5f7fa;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --padding: 16px;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-color);
+    background-color: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  .container {
+    padding: var(--padding);
+  }
+
+  #status-message {
+    padding: 30px;
     text-align: center;
     color: #666;
-    background-color: #f5f5f5;
-    border-radius: 4px;
+    background-color: var(--light-bg);
+    border-radius: var(--border-radius);
     margin: 20px 0;
+    box-shadow: var(--box-shadow);
+  }
+
+  /* Hide all content containers */
+  .hidden-fields-container,
+  .legacy-controls,
+  #loading-message {
+    display: none;
   }
 </style>
 
 <body>
   <div class="container">
-    <div id="loading-message">
-      <h4>Initializing app, please wait...</h4>
+    <div id="status-message">
+      <h3>Fields are currently being hidden</h3>
+      <p>The system is processing field visibility settings.</p>
     </div>
 
-    <h3> Interface APIs </h3>
-    <h5> Common Interfaces </h5>
-    <fw-button size="small" onclick="showModal()" disabled>show modal</fw-button>
-    <fw-button size="small" onclick="showDialog()" disabled>show Dialog</fw-button>
-    <fw-button size="small" onclick="showConfirm()" disabled>show confirm</fw-button>
-    <fw-button size="small" onclick="notify()" disabled>Notify</fw-button>
+    <!-- Hidden Fields Display (now hidden) -->
+    <div class="hidden-fields-container" id="hidden-fields-container">
+      <!-- Content hidden -->
+    </div>
 
-    <h5> Ticket Detail page APIs </h5>
-    <fw-button size="small" onclick="hide('status')" disabled>Hide status</fw-button>
-    <fw-button size="small" onclick="show('status')" disabled>Show status</fw-button>
-    <fw-button size="small" color="danger" onclick="disable('status')" disabled>Disable status</fw-button>
-    <fw-button size="small" onclick="enable('status')" disabled>Enable status</fw-button>
-    <fw-button size="small" onclick="setValue('status', 5)" disabled>Set status</fw-button>
-
-    <h5> Assembly Tracker Status Field </h5>
-    <fw-button size="small" onclick="hide('cf_assembly_tracker_status')" disabled>Hide Assembly Tracker</fw-button>
-    <fw-button size="small" onclick="show('cf_assembly_tracker_status')" disabled>Show Assembly Tracker</fw-button>
-
-    <h5> Editor window APIs </h5>
-    <fw-button size="small" onclick="openNote()" disabled>Open note</fw-button>
-    <fw-button size="small" onclick="insertContent()" disabled>InsertContent</fw-button>
+    <!-- Legacy buttons section (hidden) -->
+    <div class="legacy-controls">
+      <!-- Content hidden -->
+    </div>
   </div>
+
+  <script>
+    // Keep minimal script functionality
+    let hiddenFieldsTracker = {
+      fields: new Set()
+    };
+
+    window.addEventListener('load', function () {
+      setTimeout(() => {
+        if (window.client) {
+          const originalTrigger = window.client.interface.trigger;
+
+          window.client.interface.trigger = function (action, data) {
+            // Track hide actions
+            if (action === 'hide' && data && data.id) {
+              hiddenFieldsTracker.fields.add(data.id);
+            }
+            // Remove from tracker if shown
+            if (action === 'show' && data && data.id) {
+              hiddenFieldsTracker.fields.delete(data.id);
+            }
+            return originalTrigger.apply(this, arguments);
+          };
+        }
+      }, 2000); // Wait for client to initialize
+    });
+  </script>
 </body>
 
 </html>
