@@ -242,18 +242,20 @@ async function hideAdminOnlyFields() {
   // Check if user has admin privileges
   const isAdmin = await checkIfUserHasAdminPrivileges();
 
-  if (!isAdmin) {
-    // Hide admin-only fields for non-admin users
-    for (const fieldId of ADMIN_ONLY_FIELDS) {
-      try {
+  for (const fieldId of ADMIN_ONLY_FIELDS) {
+    try {
+      if (!isAdmin) {
+        // Hide admin-only fields for non-admin users
         await window.client.interface.trigger("hide", { id: fieldId });
         console.log(`Hiding admin-only field ${fieldId} for non-admin user`);
-      } catch (error) {
-        console.error(`Failed to hide admin-only field ${fieldId}:`, error);
+      } else {
+        // Explicitly show admin-only fields for admin users
+        await window.client.interface.trigger("show", { id: fieldId });
+        console.log(`Showing admin-only field ${fieldId} for admin user`);
       }
+    } catch (error) {
+      console.error(`Failed to manage admin-only field ${fieldId}:`, error);
     }
-  } else {
-    console.log('User is admin, admin-only fields can be visible');
   }
 }
 
@@ -266,13 +268,21 @@ async function handleBookingsMeetingDateField(ticketData) {
   const custom_fields = ticketData.ticket.custom_fields;
   const issueDetail = custom_fields.cf_issue_detail;
 
-  // Hide cf_bookings_meeting_date if cf_issue_detail is "Bookings Meeting"
-  if (issueDetail === "Bookings Meeting") {
+  // Hide cf_bookings_meeting_date if cf_issue_detail is NOT "Bookings Meeting"
+  if (issueDetail !== "Bookings Meeting") {
     try {
       await window.client.interface.trigger("hide", { id: "cf_bookings_meeting_date" });
-      console.log('Hiding bookings meeting date field because issue detail is "Bookings Meeting"');
+      console.log('Hiding bookings meeting date field because issue detail is NOT "Bookings Meeting"');
     } catch (error) {
       console.error('Failed to hide bookings meeting date field:', error);
+    }
+  } else {
+    // Show the field if issue detail IS "Bookings Meeting"
+    try {
+      await window.client.interface.trigger("show", { id: "cf_bookings_meeting_date" });
+      console.log('Showing bookings meeting date field because issue detail IS "Bookings Meeting"');
+    } catch (error) {
+      console.error('Failed to show bookings meeting date field:', error);
     }
   }
 }
@@ -284,7 +294,16 @@ async function hideAllManagedCustomFields() {
     return;
   }
 
+  // Check if user is admin before hiding admin-only fields
+  const isAdmin = await checkIfUserHasAdminPrivileges();
+
   for (const fieldId of MANAGED_CUSTOM_FIELDS) {
+    // Skip admin-only fields for admins
+    if (isAdmin && ADMIN_ONLY_FIELDS.includes(fieldId)) {
+      console.log(`Not hiding admin-only field ${fieldId} for admin user`);
+      continue;
+    }
+
     try {
       await window.client.interface.trigger("hide", { id: fieldId });
     } catch (error) {
@@ -295,7 +314,7 @@ async function hideAllManagedCustomFields() {
   // Also hide the always-hidden fields
   hideAlwaysHiddenFields();
 
-  console.log('All managed custom fields hidden');
+  console.log('All managed custom fields hidden (except admin fields for admin users)');
 }
 
 // Hide fields that should always be hidden
@@ -330,18 +349,41 @@ async function checkCurrentTicket() {
     // Handle assembly tracker field visibility based on tags
     handleAssemblyTrackerVisibility(ticketData);
 
-    // Handle custom fields visibility based on source
-    handleCustomFieldsVisibility(ticketData);
-
-    // Always hide specific fields
+    // Always hide specific fields first
     hideAlwaysHiddenFields();
 
-    // Hide admin-only fields for non-admin users
-    await hideAdminOnlyFields();
+    // Check if user has admin privileges
+    const isAdmin = await checkIfUserHasAdminPrivileges();
+
+    // If user is admin, show admin-only fields
+    if (isAdmin) {
+      for (const fieldId of ADMIN_ONLY_FIELDS) {
+        try {
+          await window.client.interface.trigger("show", { id: fieldId });
+          console.log(`Explicitly showing admin-only field ${fieldId} for admin user`);
+        } catch (error) {
+          console.error(`Failed to show admin-only field ${fieldId}:`, error);
+        }
+      }
+    }
+
+    // Handle custom fields visibility based on source
+    handleCustomFieldsVisibility(ticketData);
 
     // Handle special case for bookings meeting date
     await handleBookingsMeetingDateField(ticketData);
 
+    // If user is admin, ensure admin fields remain visible
+    if (isAdmin) {
+      for (const fieldId of ADMIN_ONLY_FIELDS) {
+        try {
+          await window.client.interface.trigger("show", { id: fieldId });
+          console.log(`Final check: ensuring admin-only field ${fieldId} is visible for admin user`);
+        } catch (error) {
+          console.error(`Failed to show admin-only field ${fieldId}:`, error);
+        }
+      }
+    }
   } catch (error) {
     console.error('Error checking ticket data:', error);
     // Hide fields on error
@@ -392,8 +434,20 @@ async function handleCustomFieldsVisibility(ticketData) {
   console.log(`Ticket source: ${ticket.source}, isPortalSource: ${isPortalSource}, isFeedbackWidgetSource: ${isFeedbackWidgetSource}, isAllowedSource: ${isAllowedSource}`);
 
   if (!isAllowedSource) {
-    console.log('Ticket is not from Portal or Feedback Widget source, hiding all custom fields');
-    hideAllManagedCustomFields();
+    console.log('Ticket is not from Portal or Feedback Widget source, hiding all custom fields except admin-only fields');
+    // Hide all managed fields except admin-only fields for admins
+    const isAdmin = await checkIfUserHasAdminPrivileges();
+    for (const fieldId of MANAGED_CUSTOM_FIELDS) {
+      // Skip admin-only fields for admins
+      if (isAdmin && ADMIN_ONLY_FIELDS.includes(fieldId)) {
+        continue;
+      }
+      try {
+        await window.client.interface.trigger("hide", { id: fieldId });
+      } catch (error) {
+        console.error(`Failed to hide field ${fieldId}:`, error);
+      }
+    }
     return;
   }
 
@@ -417,30 +471,64 @@ async function handleCustomFieldsVisibility(ticketData) {
         continue;
       }
 
-      // Skip admin-only fields for non-admin users
-      if (ADMIN_ONLY_FIELDS.includes(fieldId) && !isAdmin) {
-        continue;
+      // For admin-only fields, always show them to admins regardless of value
+      if (ADMIN_ONLY_FIELDS.includes(fieldId)) {
+        if (isAdmin) {
+          try {
+            await window.client.interface.trigger("show", { id: fieldId });
+            console.log(`Showing admin-only field ${fieldId} to admin user regardless of value`);
+          } catch (error) {
+            console.error(`Failed to show admin-only field ${fieldId}:`, error);
+          }
+          continue;
+        } else {
+          // Hide admin-only fields for non-admin users
+          try {
+            await window.client.interface.trigger("hide", { id: fieldId });
+            console.log(`Hiding admin-only field ${fieldId} for non-admin user`);
+          } catch (error) {
+            console.error(`Failed to hide admin-only field ${fieldId}:`, error);
+          }
+          continue;
+        }
       }
 
       // For subscription-dependent fields, only process if categorization is "Subscriptions"
-      if (SUBSCRIPTION_DEPENDENT_FIELDS.includes(fieldId) && !isSubscriptionCategorization) {
-        try {
-          await window.client.interface.trigger("hide", { id: fieldId });
-          console.log(`Hiding subscription-dependent field ${fieldId} because categorization is not "Subscriptions"`);
-        } catch (error) {
-          console.error(`Failed to hide subscription-dependent field ${fieldId}:`, error);
+      if (SUBSCRIPTION_DEPENDENT_FIELDS.includes(fieldId)) {
+        if (isSubscriptionCategorization) {
+          try {
+            await window.client.interface.trigger("show", { id: fieldId });
+            console.log(`Showing subscription-dependent field ${fieldId} because categorization is "Subscriptions"`);
+          } catch (error) {
+            console.error(`Failed to show subscription-dependent field ${fieldId}:`, error);
+          }
+        } else {
+          try {
+            await window.client.interface.trigger("hide", { id: fieldId });
+            console.log(`Hiding subscription-dependent field ${fieldId} because categorization is not "Subscriptions"`);
+          } catch (error) {
+            console.error(`Failed to hide subscription-dependent field ${fieldId}:`, error);
+          }
         }
         continue;
       }
 
       // Special case for bookings meeting date
-      if (fieldId === "cf_bookings_meeting_date" &&
-        ticket.custom_fields.cf_issue_detail === "Bookings Meeting") {
-        try {
-          await window.client.interface.trigger("hide", { id: fieldId });
-          console.log(`Hiding bookings meeting date field because issue detail is "Bookings Meeting"`);
-        } catch (error) {
-          console.error(`Failed to hide bookings meeting date field:`, error);
+      if (fieldId === "cf_bookings_meeting_date") {
+        if (ticket.custom_fields.cf_issue_detail === "Bookings Meeting") {
+          try {
+            await window.client.interface.trigger("show", { id: fieldId });
+            console.log(`Showing bookings meeting date field because issue detail is "Bookings Meeting"`);
+          } catch (error) {
+            console.error(`Failed to show bookings meeting date field:`, error);
+          }
+        } else {
+          try {
+            await window.client.interface.trigger("hide", { id: fieldId });
+            console.log(`Hiding bookings meeting date field because issue detail is NOT "Bookings Meeting"`);
+          } catch (error) {
+            console.error(`Failed to hide bookings meeting date field:`, error);
+          }
         }
         continue;
       }
@@ -476,8 +564,19 @@ async function handleCustomFieldsVisibility(ticketData) {
       }
     }
   } else {
-    console.log('No custom fields data available, hiding all custom fields');
-    hideAllManagedCustomFields();
+    console.log('No custom fields data available, hiding all non-admin fields');
+    // Hide all non-admin fields
+    for (const fieldId of MANAGED_CUSTOM_FIELDS) {
+      // Skip admin-only fields for admins
+      if (isAdmin && ADMIN_ONLY_FIELDS.includes(fieldId)) {
+        continue;
+      }
+      try {
+        await window.client.interface.trigger("hide", { id: fieldId });
+      } catch (error) {
+        console.error(`Failed to hide field ${fieldId}:`, error);
+      }
+    }
   }
 }
 

@@ -1,0 +1,167 @@
+=======================================================================
+                    FIELD VISIBILITY REFERENCE
+=======================================================================
+
+This document provides comprehensive information about which fields are
+hidden and when in the Benchmark Education Company Freshdesk app.
+
+-----------------------------------------------------------------------
+FIELD CATEGORIES
+-----------------------------------------------------------------------
+
+1. MANAGED CUSTOM FIELDS
+   All fields managed by this app:
+   - cf_use_tech_admin_to_resolve
+   - cf_realm
+   - cf_issue_type
+   - cf_path
+   - cf_affected_users_bu_role
+   - cf_new_rostering_method
+   - cf_rostering_method
+   - cf_username
+   - cf_requested_date_of_completion
+   - cf_new_district_term_start_date
+   - cf_schools_to_be_updated
+   - cf_nameemail_of_contact_to_add
+   - cf_nameemail_of_contact_to_remove
+   - cf_nameemail_of_contact_to_update
+   - cf_what_type_of_support_do_you_need
+   - cf_current_lms_learning_management_system
+   - cf_sales_order_number
+   - cf_district_admin
+   - cf_school_admin
+   - cf_fsm_customer_signature
+   - cf_fsm_appointment_start_time
+   - cf_fsm_appointment_end_time
+   - cf_student
+   - cf_teacher
+   - cf_how_can_we_help
+   - cf_meeting_date
+   - cf_purchase_order
+   - cf_associated_sales_order
+   - cf_associated_deal
+   - cf_csat_feedback_received
+   - cf_tracker_resolved
+   - cf_old_subfill
+   - cf_qa
+   - cf_outside_our_control
+   - cf_within_our_control
+   - cf_test
+   - cf_bookings_meeting_date
+
+2. ALWAYS HIDDEN FIELDS
+   Fields that are always hidden regardless of any conditions:
+   - cf_meeting_date
+   - internal_group
+   - cf_csat_feedback_received
+   - cf_tracker_resolved
+   - cf_old_subfill
+
+3. SUBSCRIPTION DEPENDENT FIELDS
+   ✓ SHOWN if:
+     - Ticket categorization is "Subscriptions"
+   ✓ HIDDEN if:
+     - Ticket categorization is NOT "Subscriptions"
+   ✓ Notes:
+     - Field values do not affect visibility of these fields
+     - Admin status does not override this rule
+
+4. ADMIN ONLY FIELDS
+   Fields that are only visible to Admin or Account Admin users:
+   - cf_qa
+   - cf_outside_our_control
+   - cf_within_our_control
+   - cf_test
+
+-----------------------------------------------------------------------
+VISIBILITY RULES BY FIELD TYPE
+-----------------------------------------------------------------------
+
+1. ALWAYS HIDDEN FIELDS
+   ✓ Hidden in ALL cases, regardless of:
+     - User role (admin or non-admin)
+     - Field values (populated or empty)
+     - Ticket source
+     - Categorization
+
+2. ADMIN ONLY FIELDS
+   ✓ SHOWN if:
+     - User has Admin role (ID: 67000255947) OR
+     - User has Account Admin role (ID: 67000255946)
+   ✓ HIDDEN if:
+     - User has any other role
+   ✓ Notes:
+     - For admin users, shown regardless of field values
+     - Multiple checks ensure these remain visible throughout processing
+
+3. SUBSCRIPTION DEPENDENT FIELDS
+   ✓ SHOWN if:
+     - Ticket categorization is "Subscriptions"
+   ✓ HIDDEN if:
+     - Ticket categorization is NOT "Subscriptions"
+   ✓ Notes:
+     - Field values do not affect visibility of these fields
+     - Admin status does not override this rule
+
+4. ASSEMBLY TRACKER FIELD (cf_assembly_tracker_status)
+   ✓ SHOWN if ticket has either tag:
+     - 'assembly-rollover' OR
+     - 'tracker-assembly'
+   ✓ HIDDEN in all other cases
+
+5. BOOKINGS MEETING DATE FIELD (cf_bookings_meeting_date)
+   ✓ SHOWN if:
+     - cf_issue_detail is "Bookings Meeting"
+   ✓ HIDDEN if:
+     - cf_issue_detail is NOT "Bookings Meeting"
+
+6. ALL OTHER MANAGED FIELDS
+   ✓ HIDDEN if:
+     - Ticket source is not Portal (id=2) or Feedback Widget (id=9)
+     - Field has no value (null, undefined, empty string, or empty array)
+   ✓ SHOWN if:
+     - Ticket source is Portal or Feedback Widget AND
+     - Field has a value
+
+-----------------------------------------------------------------------
+PROCESS FLOW & EXECUTION ORDER
+-----------------------------------------------------------------------
+
+1. App initialization
+   - All managed fields are initially hidden
+
+2. Field visibility processing
+   - Always-hidden fields are hidden first
+   - For admin users, admin-only fields are shown early in the process
+   - Fields are shown/hidden based on source, values, and special rules
+   - Final check ensures admin-only fields remain visible for admins
+
+3. Error handling
+   - If any errors occur, all fields are hidden except:
+     - Admin-only fields remain visible for admin users 
+
+-----------------------------------------------------------------------
+TROUBLESHOOTING
+-----------------------------------------------------------------------
+
+If a field isn't showing when expected:
+
+1. Check if it's in ALWAYS_HIDDEN_FIELDS
+   - These fields are never shown
+
+2. Check if it's an ADMIN_ONLY_FIELD
+   - Confirm the user has admin/account admin role
+
+3. Check if it's a SUBSCRIPTION_DEPENDENT_FIELD
+   - Confirm categorization is "Subscriptions"
+
+4. For BOOKINGS_MEETING_DATE field:
+   - Confirm cf_issue_detail is "Bookings Meeting"
+
+5. For all other fields:
+   - Confirm ticket source is Portal (2) or Feedback Widget (9)
+   - Confirm the field has a value (not null/empty)
+
+-----------------------------------------------------------------------
+LAST UPDATED: April 2025
+======================================================================= 
