@@ -3,6 +3,71 @@ let isInitializing = false;
 let initializationRetries = 0;
 const MAX_RETRIES = 5;
 
+// List of custom field IDs to manage visibility
+const MANAGED_CUSTOM_FIELDS = [
+  "cf_use_tech_admin_to_resolve",
+  "cf_realm",
+  "cf_issue_type",
+  "cf_path",
+  "cf_affected_users_bu_role",
+  "cf_new_rostering_method",
+  "cf_rostering_method",
+  "cf_username",
+  "cf_requested_date_of_completion",
+  "cf_new_district_term_start_date",
+  "cf_schools_to_be_updated",
+  "cf_nameemail_of_contact_to_add",
+  "cf_nameemail_of_contact_to_remove",
+  "cf_nameemail_of_contact_to_update",
+  "cf_what_type_of_support_do_you_need",
+  "cf_current_lms_learning_management_system",
+  "cf_sales_order_number",
+  "cf_district_admin",
+  "cf_school_admin",
+  "cf_fsm_customer_signature",
+  "cf_fsm_appointment_start_time",
+  "cf_fsm_appointment_end_time",
+  "cf_student",
+  "cf_teacher",
+  "cf_how_can_we_help",
+  "cf_meeting_date",
+  "cf_purchase_order",
+  "cf_associated_sales_order",
+  "cf_associated_deal",
+  "cf_csat_feedback_received",
+  "cf_tracker_resolved",
+  "cf_old_subfill",
+  "cf_qa",
+  "cf_outside_our_control",
+  "cf_within_our_control",
+  "cf_test",
+  "cf_bookings_meeting_date"
+];
+
+// Fields that should always be hidden regardless of other conditions
+const ALWAYS_HIDDEN_FIELDS = [
+  "cf_meeting_date",
+  "internal_group",
+  "cf_csat_feedback_received",
+  "cf_tracker_resolved",
+  "cf_old_subfill"
+];
+
+// Fields that should only be shown when categorization is "Subscriptions"
+const SUBSCRIPTION_DEPENDENT_FIELDS = [
+  "cf_purchase_order",
+  "cf_associated_sales_order",
+  "cf_associated_deal"
+];
+
+// Fields that should only be visible to Admin or Account Admin users
+const ADMIN_ONLY_FIELDS = [
+  "cf_qa",
+  "cf_outside_our_control",
+  "cf_within_our_control",
+  "cf_test"
+];
+
 // Initialize when window is fully loaded
 window.onload = function () {
   console.log("Window loaded, starting initialization");
@@ -72,6 +137,9 @@ function initializeClient() {
       // Hide assembly tracker field by default
       hideAssemblyTrackerField();
 
+      // Initially hide all managed custom fields
+      hideAllManagedCustomFields();
+
       // Check if we're on a ticket details page and handle visibility
       checkCurrentTicket();
 
@@ -115,6 +183,136 @@ function registerEventHandlers() {
     console.log('Ticket tags changed:', event);
     checkCurrentTicket();
   });
+
+  // Listen for ticket field changes which might affect custom field visibility
+  window.client.events.on('ticket.customFieldChanged', function (event) {
+    console.log('Custom field changed:', event);
+    checkCurrentTicket();
+  });
+
+  window.client.events.on('ticket.sourceChanged', function (event) {
+    console.log('Source changed:', event);
+    checkCurrentTicket();
+  });
+}
+
+// Check if current user has admin privileges (Admin or Account Admin)
+async function checkIfUserHasAdminPrivileges() {
+  if (!window.client) {
+    console.error('Client not initialized, cannot check user privileges');
+    return false;
+  }
+
+  try {
+    // Try to get the current agent data
+    const data = await window.client.data.get('loggedInUser');
+    console.log('Current user data:', data);
+
+    if (data && data.loggedInUser && data.loggedInUser.role_ids) {
+      // Check for specific admin role IDs
+      const ADMIN_ROLE_ID = 67000255947;
+      const ACCOUNT_ADMIN_ROLE_ID = 67000255946;
+
+      const isAdmin = data.loggedInUser.role_ids.includes(ADMIN_ROLE_ID) ||
+        data.loggedInUser.role_ids.includes(ACCOUNT_ADMIN_ROLE_ID);
+
+      console.log(`User role IDs: ${data.loggedInUser.role_ids}, isAdmin: ${isAdmin}`);
+      return isAdmin;
+    }
+
+    // If we couldn't get the role IDs, return false
+    console.log('Could not determine user role IDs, defaulting to non-admin');
+    return false;
+  } catch (error) {
+    console.error('Error checking user privileges:', error);
+    console.log('Due to error, defaulting to showing admin-only fields');
+    // When there's an error checking privileges, we'll show admin fields
+    // This prevents hiding fields from users who might need them
+    return true;
+  }
+}
+
+// Hide admin-only fields for non-admin users
+async function hideAdminOnlyFields() {
+  if (!window.client) {
+    console.error('Client not initialized, cannot hide admin-only fields');
+    return;
+  }
+
+  // Check if user has admin privileges
+  const isAdmin = await checkIfUserHasAdminPrivileges();
+
+  if (!isAdmin) {
+    // Hide admin-only fields for non-admin users
+    for (const fieldId of ADMIN_ONLY_FIELDS) {
+      try {
+        await window.client.interface.trigger("hide", { id: fieldId });
+        console.log(`Hiding admin-only field ${fieldId} for non-admin user`);
+      } catch (error) {
+        console.error(`Failed to hide admin-only field ${fieldId}:`, error);
+      }
+    }
+  } else {
+    console.log('User is admin, admin-only fields can be visible');
+  }
+}
+
+// Handle special case for bookings meeting date
+async function handleBookingsMeetingDateField(ticketData) {
+  if (!window.client || !ticketData || !ticketData.ticket || !ticketData.ticket.custom_fields) {
+    return;
+  }
+
+  const custom_fields = ticketData.ticket.custom_fields;
+  const issueDetail = custom_fields.cf_issue_detail;
+
+  // Hide cf_bookings_meeting_date if cf_issue_detail is "Bookings Meeting"
+  if (issueDetail === "Bookings Meeting") {
+    try {
+      await window.client.interface.trigger("hide", { id: "cf_bookings_meeting_date" });
+      console.log('Hiding bookings meeting date field because issue detail is "Bookings Meeting"');
+    } catch (error) {
+      console.error('Failed to hide bookings meeting date field:', error);
+    }
+  }
+}
+
+// Hide all managed custom fields
+async function hideAllManagedCustomFields() {
+  if (!window.client) {
+    console.error('Client not initialized, cannot hide custom fields');
+    return;
+  }
+
+  for (const fieldId of MANAGED_CUSTOM_FIELDS) {
+    try {
+      await window.client.interface.trigger("hide", { id: fieldId });
+    } catch (error) {
+      console.error(`Failed to hide field ${fieldId}:`, error);
+    }
+  }
+
+  // Also hide the always-hidden fields
+  hideAlwaysHiddenFields();
+
+  console.log('All managed custom fields hidden');
+}
+
+// Hide fields that should always be hidden
+async function hideAlwaysHiddenFields() {
+  if (!window.client) {
+    console.error('Client not initialized, cannot hide always-hidden fields');
+    return;
+  }
+
+  for (const fieldId of ALWAYS_HIDDEN_FIELDS) {
+    try {
+      await window.client.interface.trigger("hide", { id: fieldId });
+      console.log(`Always hiding field ${fieldId}`);
+    } catch (error) {
+      console.error(`Failed to hide always-hidden field ${fieldId}:`, error);
+    }
+  }
 }
 
 // Check current ticket for tags and update field visibility
@@ -129,30 +327,157 @@ async function checkCurrentTicket() {
     const ticketData = await window.client.data.get('ticket');
     console.log('Current ticket data:', ticketData);
 
-    // Fix: Access tags through the nested ticket object
-    if (ticketData && ticketData.ticket && ticketData.ticket.tags) {
-      const tags = ticketData.ticket.tags;
+    // Handle assembly tracker field visibility based on tags
+    handleAssemblyTrackerVisibility(ticketData);
 
-      // Check if either of the special tags are present
-      const hasAssemblyRolloverTag = tags.includes('assembly-rollover');
-      const hasTrackerAssemblyTag = tags.includes('tracker-assembly');
+    // Handle custom fields visibility based on source
+    handleCustomFieldsVisibility(ticketData);
 
-      if (hasAssemblyRolloverTag || hasTrackerAssemblyTag) {
-        console.log('Ticket has special tag, showing assembly tracker field');
-        showAssemblyTrackerField();
-      } else {
-        console.log('Ticket does not have special tags, hiding assembly tracker field');
-        hideAssemblyTrackerField();
-      }
-    } else {
-      // No tags data available, hide by default
-      console.log('No tag data available, hiding assembly tracker field by default');
-      hideAssemblyTrackerField();
-    }
+    // Always hide specific fields
+    hideAlwaysHiddenFields();
+
+    // Hide admin-only fields for non-admin users
+    await hideAdminOnlyFields();
+
+    // Handle special case for bookings meeting date
+    await handleBookingsMeetingDateField(ticketData);
+
   } catch (error) {
     console.error('Error checking ticket data:', error);
-    // Hide the field on error
+    // Hide fields on error
     hideAssemblyTrackerField();
+    hideAllManagedCustomFields();
+  }
+}
+
+// Handle assembly tracker field visibility based on tags
+function handleAssemblyTrackerVisibility(ticketData) {
+  // Fix: Access tags through the nested ticket object
+  if (ticketData && ticketData.ticket && ticketData.ticket.tags) {
+    const tags = ticketData.ticket.tags;
+
+    // Check if either of the special tags are present
+    const hasAssemblyRolloverTag = tags.includes('assembly-rollover');
+    const hasTrackerAssemblyTag = tags.includes('tracker-assembly');
+
+    if (hasAssemblyRolloverTag || hasTrackerAssemblyTag) {
+      console.log('Ticket has special tag, showing assembly tracker field');
+      showAssemblyTrackerField();
+    } else {
+      console.log('Ticket does not have special tags, hiding assembly tracker field');
+      hideAssemblyTrackerField();
+    }
+  } else {
+    // No tags data available, hide by default
+    console.log('No tag data available, hiding assembly tracker field by default');
+    hideAssemblyTrackerField();
+  }
+}
+
+// Handle custom fields visibility based on source and field values
+async function handleCustomFieldsVisibility(ticketData) {
+  if (!ticketData || !ticketData.ticket) {
+    console.log('No ticket data available, hiding all custom fields');
+    hideAllManagedCustomFields();
+    return;
+  }
+
+  const ticket = ticketData.ticket;
+
+  // Check if source is Portal (id=2) or Feedback Widget (id=9)
+  const isPortalSource = ticket.source === 2;
+  const isFeedbackWidgetSource = ticket.source === 9;
+  const isAllowedSource = isPortalSource || isFeedbackWidgetSource;
+
+  console.log(`Ticket source: ${ticket.source}, isPortalSource: ${isPortalSource}, isFeedbackWidgetSource: ${isFeedbackWidgetSource}, isAllowedSource: ${isAllowedSource}`);
+
+  if (!isAllowedSource) {
+    console.log('Ticket is not from Portal or Feedback Widget source, hiding all custom fields');
+    hideAllManagedCustomFields();
+    return;
+  }
+
+  // Check if categorization is "Subscriptions" for subscription-dependent fields
+  const isSubscriptionCategorization =
+    ticket.custom_fields &&
+    ticket.custom_fields.cf_categorization === "Subscriptions";
+
+  console.log(`Categorization check: ${isSubscriptionCategorization ? 'Is Subscriptions' : 'Not Subscriptions'}`);
+
+  // Check if user has admin privileges
+  const isAdmin = await checkIfUserHasAdminPrivileges();
+
+  // If source is allowed (Portal or Feedback Widget), show fields that have values
+  if (ticket.custom_fields) {
+    console.log('Checking custom fields for values:', ticket.custom_fields);
+
+    for (const fieldId of MANAGED_CUSTOM_FIELDS) {
+      // Skip always-hidden fields
+      if (ALWAYS_HIDDEN_FIELDS.includes(fieldId)) {
+        continue;
+      }
+
+      // Skip admin-only fields for non-admin users
+      if (ADMIN_ONLY_FIELDS.includes(fieldId) && !isAdmin) {
+        continue;
+      }
+
+      // For subscription-dependent fields, only process if categorization is "Subscriptions"
+      if (SUBSCRIPTION_DEPENDENT_FIELDS.includes(fieldId) && !isSubscriptionCategorization) {
+        try {
+          await window.client.interface.trigger("hide", { id: fieldId });
+          console.log(`Hiding subscription-dependent field ${fieldId} because categorization is not "Subscriptions"`);
+        } catch (error) {
+          console.error(`Failed to hide subscription-dependent field ${fieldId}:`, error);
+        }
+        continue;
+      }
+
+      // Special case for bookings meeting date
+      if (fieldId === "cf_bookings_meeting_date" &&
+        ticket.custom_fields.cf_issue_detail === "Bookings Meeting") {
+        try {
+          await window.client.interface.trigger("hide", { id: fieldId });
+          console.log(`Hiding bookings meeting date field because issue detail is "Bookings Meeting"`);
+        } catch (error) {
+          console.error(`Failed to hide bookings meeting date field:`, error);
+        }
+        continue;
+      }
+
+      // Get the field key 
+      const fieldKey = fieldId;
+      const fieldValue = ticket.custom_fields[fieldKey];
+
+      // Check if field has a value (not null, undefined, empty string, or empty array)
+      const hasValue = fieldValue !== null &&
+        fieldValue !== undefined &&
+        fieldValue !== '' &&
+        !(Array.isArray(fieldValue) && fieldValue.length === 0);
+
+      console.log(`Field ${fieldId}: value=${fieldValue}, hasValue=${hasValue}`);
+
+      if (hasValue) {
+        // Show field if it has a value
+        try {
+          await window.client.interface.trigger("show", { id: fieldId });
+          console.log(`Showing field ${fieldId} with value: ${fieldValue}`);
+        } catch (error) {
+          console.error(`Failed to show field ${fieldId}:`, error);
+        }
+      } else {
+        // Hide field if it doesn't have a value
+        try {
+          await window.client.interface.trigger("hide", { id: fieldId });
+          console.log(`Hiding field ${fieldId} with no value`);
+        } catch (error) {
+          console.error(`Failed to hide field ${fieldId}:`, error);
+        }
+      }
+    }
+  } else {
+    console.log('No custom fields data available, hiding all custom fields');
+    hideAllManagedCustomFields();
   }
 }
 
