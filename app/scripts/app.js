@@ -50,7 +50,16 @@ const ALWAYS_HIDDEN_FIELDS = [
   "internal_group",
   "cf_csat_feedback_received",
   "cf_tracker_resolved",
-  "cf_old_subfill"
+  "cf_old_subfill",
+  "cf_summary_or_issue_description",
+  "cf_jira_print_digital",
+  "cf_jira_version",
+  "cf_jira_copyright",
+  "cf_sedcust_jira_resource",
+  "cf_jira_product_name",
+  "cf_jira_locale",
+  "cf_jira_state_district_variation",
+  "cf_jira_user_role"
 ];
 
 // Fields that should only be shown when categorization is "Subscriptions"
